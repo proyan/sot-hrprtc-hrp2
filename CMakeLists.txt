@@ -33,9 +33,16 @@ SEARCH_GRX_ROBOTS("HRP2JRL;HRP2LAAS;HRP4LIRMM")
 
 SET(STABILIZER ON CACHE BOOL "Whether stabilizer RTcomponent is used or not.")
 
+# Configure                                                                                                                                                   
+CONFIGURE_FILE(
+   "${CMAKE_CURRENT_SOURCE_DIR}/src/rtc-stack-of-tasks.cpp.cmake"
+   "${CMAKE_CURRENT_SOURCE_DIR}/src/rtc-stack-of-tasks.cpp"
+)
+
 ADD_SUBDIRECTORY(src)
 ADD_SUBDIRECTORY(components)
 ADD_SUBDIRECTORY(scripts)
+
 
 SETUP_PROJECT_FINALIZE()
 SETUP_PROJECT_CPACK()

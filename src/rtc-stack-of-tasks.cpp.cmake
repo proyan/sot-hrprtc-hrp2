@@ -105,6 +105,7 @@ void RtcStackOfTasks::readConfig()
 void RtcStackOfTasks::LoadSot()
 {
   char * sLD_LIBRARY_PATH;
+
   sLD_LIBRARY_PATH=getenv("LD_LIBRARY_PATH");
   ODEBUG5("LoadSot - Start " << sLD_LIBRARY_PATH);
   char * sPYTHONPATH;
@@ -117,8 +118,18 @@ void RtcStackOfTasks::LoadSot()
   void * SotHRP2ControllerLibrary = dlopen(robot_config_.libname.c_str(),
                                            RTLD_GLOBAL | RTLD_NOW);
   if (!SotHRP2ControllerLibrary) {
-    ODEBUG5("Cannot load library: " << dlerror() );
-    return ;
+    //Perhaps there is a problem in LD_LIBRARY_PATH.
+    //Assuming the controller library is installed in the same path as current package
+    //Try to find the file in the installation directory
+
+    std::string pathToCurrentInstall = "@CMAKE_INSTALL_PREFIX@/@CMAKE_INSTALL_LIBDIR@/" + robot_config_.libname;
+    SotHRP2ControllerLibrary = dlopen(pathToCurrentInstall.c_str(),
+				      RTLD_GLOBAL | RTLD_NOW);
+
+    if (!SotHRP2ControllerLibrary) {
+      ODEBUG5("Cannot load library: " << dlerror() );
+      return ;
+    }
   }
   ODEBUG5("Success in loading the library:" << robot_config_.libname);
   // reset errors
@@ -128,6 +139,7 @@ void RtcStackOfTasks::LoadSot()
   createSotExternalInterface_t * createHRP2Controller =
     (createSotExternalInterface_t *) dlsym(SotHRP2ControllerLibrary, 
                                            "createSotExternalInterface");
+
   ODEBUG5("createHRPController call "<< std::hex
           << std::setbase(10));
   const char* dlsym_error = dlerror();
