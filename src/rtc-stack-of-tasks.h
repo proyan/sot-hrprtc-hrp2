@@ -207,6 +207,13 @@ class RtcStackOfTasks  : public RTC::DataFlowComponentBase
   void readControl(std::map<std::string,dgsot::ControlValues> &controlValues);
 
  private:
+  
+  std::vector<double>&
+  sotUrdfToHrpVrmlMap(std::vector<double>& sotUrdf,
+				       std::vector<double>& hrpVrml);
+  std::vector<double>&
+  hrpVrmlToSotUrdfMap(std::vector<double>& hrpVrml,
+		      std::vector<double>& sotUrdf);
 
   /// \brief Update force sensor fields for SoT
   void fillInForceSensor(InPort<TimedDoubleSeq> &aForcePortIn,

@@ -93,6 +93,44 @@ RtcStackOfTasks::~RtcStackOfTasks()
 {
 }
 
+
+
+//Local function
+std::vector<double>&
+RtcStackOfTasks::sotUrdfToHrpVrmlMap(std::vector<double>& sotUrdf, std::vector<double>& hrpVrml)
+{
+  
+  hrpVrml.resize((sotUrdf.size()));
+  
+  //SOT: CHEST HEAD 0:4, LARM 4:11, RARM 11:18, LLEG 18:24, RLEG 24:30
+  //HRP: RLEG 0:6, LLEG 6:12, CHEST HEAD 12:16, RARM 16:23, LARM 23:30
+  for (int i=0;i<6;i++)    hrpVrml.at(i) = sotUrdf.at(24+i); //RLEG
+  for (int i=0;i<6;i++)    hrpVrml.at(i+6) = sotUrdf.at(18+i); //LLEG
+  for (int i=0;i<4;i++)    hrpVrml.at(i+12) = sotUrdf.at(i); //CHEST HEAD
+  for (int i=0;i<7;i++)    hrpVrml.at(i+16) = sotUrdf.at(11+i); //RARM
+  for (int i=0;i<7;i++)    hrpVrml.at(i+23) = sotUrdf.at(4+i); //LARM
+  
+  return hrpVrml;
+  
+}
+std::vector<double>&
+RtcStackOfTasks::hrpVrmlToSotUrdfMap(std::vector<double>& hrpVrml, std::vector<double>& sotUrdf)
+{
+  
+  sotUrdf.resize((hrpVrml.size()));
+  
+  //SOT: CHEST HEAD 0:4, LARM 4:11, RARM 11:18, LLEG 18:24, RLEG 24:30
+  //HRP: RLEG 0:6, LLEG 6:12, CHEST HEAD 12:16, RARM 16:23, LARM 23:30
+  for (int i=0;i<4;i++)    sotUrdf.at(i)    = hrpVrml.at(i+12); //CHEST HEAD
+  for (int i=0;i<7;i++)    sotUrdf.at(4+i)  = hrpVrml.at(i+23); //LARM
+  for (int i=0;i<7;i++)    sotUrdf.at(11+i) = hrpVrml.at(i+16); //RARM    
+  for (int i=0;i<6;i++)    sotUrdf.at(18+i) = hrpVrml.at(i+6); //LLEG
+  for (int i=0;i<6;i++)    sotUrdf.at(24+i) = hrpVrml.at(i); //RLEG
+
+  return sotUrdf;
+} 
+
+
 void RtcStackOfTasks::readConfig()
 {
   ODEBUG5("The library to be loaded: " << robot_config_.libname) ;
@@ -236,6 +274,7 @@ fillInForceSensor(InPort<TimedDoubleSeq> &aForcePortIn,
 
 }
 
+
 void RtcStackOfTasks::fillAngles(std::map<std::string,dgsot::SensorValues> & 
                                  sensorsIn,
                                  bool initPort)
@@ -250,20 +289,24 @@ void RtcStackOfTasks::fillAngles(std::map<std::string,dgsot::SensorValues> &
     }
   // Update joint values.
   sensorsIn["joints"].setName("angle");
+  std::vector<double> angleEncoderVrml;
   if (langlePortIn->isNew())
     {
       langlePortIn->read();
       
-      angleEncoder_.resize(langlePort->data.length());
+      angleEncoderVrml.resize(langlePort->data.length());
       for(unsigned int i=0;i<langlePort->data.length();i++)
         {
-          angleEncoder_[i] = langlePort->data[i];
+          angleEncoderVrml[i] = langlePort->data[i];
           if (initPort)
             {
               ODEBUG("qInit:["<<i << "]= " << langlePort->data[i]);
             }
         }
+
+      hrpVrmlToSotUrdfMap(angleEncoderVrml, angleEncoder_);
     }
+  
   sensorsIn["joints"].setValues(angleEncoder_);
 }
 
@@ -321,10 +364,12 @@ RtcStackOfTasks::fillSensors(std::map<std::string,dgsot::SensorValues> &
   sensorsIn["torques"].setName("torque");
   if (m_torquesIn.isNew())
     {
+      std::vector<double> torquesVrml(m_torques.data.length());
+      //torques_.resize(m_torques.data.length());
       
-      torques_.resize(m_torques.data.length());
       for (unsigned int j = 0; j < m_torques.data.length(); ++j)
-        torques_[j] = m_torques.data[j];
+        torquesVrml[j] = m_torques.data[j];
+      hrpVrmlToSotUrdfMap(torquesVrml, torques_);
     }
   else 
     {
@@ -393,6 +438,7 @@ RtcStackOfTasks::fillSensors(std::map<std::string,dgsot::SensorValues> &
   sensorsIn["gyrometer_0"].setValues(gyrometer_);
 }
 
+
 void 
 RtcStackOfTasks::readControl(std::map<std::string,dgsot::ControlValues> &controlValues)
 {
@@ -405,8 +451,12 @@ RtcStackOfTasks::readControl(std::map<std::string,dgsot::ControlValues> &control
   tm.nsec = coiltm.usec()*1000;
   
   // Update joint values.
-  angleControl_ = controlValues["joints"].getValues();
-  
+  std::vector<double> angleControlUrdf = controlValues["joints"].getValues();
+
+
+
+  sotUrdfToHrpVrmlMap(angleControlUrdf, angleControl_);
+
   for(unsigned int i=0;i<angleControl_.size();i++)
     { 
       m_qRef.data[i] = angleControl_[i]; 
